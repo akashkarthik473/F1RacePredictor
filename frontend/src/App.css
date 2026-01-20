@@ -201,6 +201,41 @@ body {
   cursor: not-allowed;
 }
 
+/* === Mode Toggle === */
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--color-bg-card);
+  padding: 0.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+}
+
+.mode-btn.active {
+  background: var(--color-accent);
+  color: white;
+}
+
 /* === Selector Section === */
 .selector-section {
   margin-bottom: 2rem;
@@ -337,6 +372,74 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* === Qualifying Leaderboard === */
+.quali-leaderboard {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.quali-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.quali-header h3 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.quali-loading {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+}
+
+.quali-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+}
+
+.quali-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.quali-table th,
+.quali-table td {
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.quali-table th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.quali-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.quali-table td:first-child {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.quali-table td:nth-child(4),
+.quali-table td:nth-child(5),
+.quali-table td:nth-child(6) {
+  font-family: var(--font-mono);
 }
 
 /* === Prediction Card === */
@@ -582,6 +685,87 @@ body {
   background: rgba(13, 13, 13, 0.8);
 }
 
+/* === Manual Input Section === */
+.manual-input-section {
+  margin-bottom: 2rem;
+}
+
+.manual-input-section h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
+.manual-input-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.input-group input,
+.input-group select {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.input-group small {
+  font-size: 0.7rem;
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+
+.manual-input-form .btn-predict {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+}
+
+.manual-prediction-result {
+  margin-top: 1.5rem;
+}
+
+.manual-prediction-result h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .header {
@@ -610,5 +794,13 @@ body {
   
   .prediction-card {
     flex-wrap: wrap;
+  }
+  
+  .manual-input-form {
+    grid-template-columns: 1fr;
+  }
+  
+  .mode-toggle {
+    flex-direction: column;
   }
 }

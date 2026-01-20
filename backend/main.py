@@ -54,6 +54,15 @@ class ScheduleRace(BaseModel):
     date: Optional[str]
 
 
+class ManualQualiInput(BaseModel):
+    driver: str
+    team: str
+    quali_time: str  # Format: "MM:SS.mmm" or "SS.mmm" or seconds as float
+    track_name: str  # Track/GP name (e.g., "Monaco Grand Prix", "Bahrain Grand Prix")
+    pole_time: Optional[str] = None  # Optional pole time for reference
+    estimated_position: Optional[int] = None  # Optional estimated quali position
+
+
 # --- Routes ---
 @app.get("/")
 async def root():
@@ -63,6 +72,7 @@ async def root():
         "endpoints": {
             "schedule": "/api/schedule",
             "predict": "/api/predict/{year}/{race}",
+            "predict_from_time": "/api/predict-from-time",
             "train": "/api/train",
         }
     }
@@ -117,8 +127,20 @@ async def predict_race(year: int, race: int | str):
     print(f"[DEBUG] Predict request: year={year}, race={race}", flush=True)
     
     try:
+        # Get race name from schedule
+        from f1_data import get_event_name
+        if isinstance(race, int):
+            race_name = get_event_name(year, race)
+        elif isinstance(race, str) and race.isdigit():
+            race_name = get_event_name(year, int(race))
+        else:
+            race_name = str(race)
+        
         # Get qualifying data
         quali_df = get_qualifying_data(year, race)
+        
+        # Add race name to dataframe for track-specific predictions
+        quali_df["race_name"] = race_name
         
         # Get predictions
         predictions = predictor.predict(quali_df)
@@ -153,15 +175,6 @@ async def predict_race(year: int, race: int | str):
             )
             for p in predictions
         ]
-        
-        # Get race name from schedule
-        from f1_data import get_event_name
-        if isinstance(race, int):
-            race_name = get_event_name(year, race)
-        elif isinstance(race, str) and race.isdigit():
-            race_name = get_event_name(year, int(race))
-        else:
-            race_name = str(race)
         
         print(f"[DEBUG] Returning prediction for: {race_name} ({year})", flush=True)
         
@@ -235,11 +248,55 @@ async def train_model(
 async def get_latest_qualifying():
     """Get the most recent qualifying results."""
     from f1_data import get_latest_qualifying
-    
+
     try:
         return get_latest_qualifying()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch qualifying: {str(e)}")
+
+
+@app.get("/api/quali/{year}/{race}")
+async def get_qualifying_leaderboard(year: int, race: int | str):
+    """
+    Get the qualifying leaderboard (with raw times) for a specific race.
+
+    - **year**: Season year (e.g., 2024)
+    - **race**: Round number or race name (e.g., 1 or "Bahrain")
+    """
+    from f1_data import get_qualifying_data, get_event_name
+
+    try:
+        # Resolve race name for response
+        if isinstance(race, int):
+            race_name = get_event_name(year, race)
+        elif isinstance(race, str) and race.isdigit():
+            race_name = get_event_name(year, int(race))
+        else:
+            race_name = str(race)
+
+        quali_df = get_qualifying_data(year, race)
+
+        # Build response with seconds (frontend will format as MM:SS.mmm)
+        results = []
+        for _, row in quali_df.sort_values("quali_position").iterrows():
+            results.append(
+                {
+                    "driver": row["driver"],
+                    "team": row["team"],
+                    "quali_position": int(row["quali_position"]),
+                    "q1_time": float(row["q1_time"]) if pd.notna(row["q1_time"]) else None,
+                    "q2_time": float(row["q2_time"]) if pd.notna(row["q2_time"]) else None,
+                    "q3_time": float(row["q3_time"]) if pd.notna(row["q3_time"]) else None,
+                }
+            )
+
+        return {
+            "year": year,
+            "race": race_name,
+            "results": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch qualifying leaderboard: {str(e)}")
 
 
 @app.get("/api/model-status")
@@ -251,6 +308,74 @@ async def model_status():
         "is_trained": predictor.is_trained,
         "team_strengths": predictor.team_strength if predictor.is_trained else None
     }
+
+
+def parse_time_to_seconds(time_str: str) -> float:
+    """
+    Parse time string to seconds.
+    Supports formats:
+    - "MM:SS.mmm" (e.g., "1:23.456")
+    - "SS.mmm" (e.g., "83.456")
+    - "SS" (e.g., "83")
+    """
+    time_str = time_str.strip()
+    
+    # Try MM:SS.mmm format
+    if ':' in time_str:
+        parts = time_str.split(':')
+        if len(parts) == 2:
+            minutes = float(parts[0])
+            seconds = float(parts[1])
+            return minutes * 60 + seconds
+    
+    # Try SS.mmm or SS format
+    return float(time_str)
+
+
+@app.post("/api/predict-from-time", response_model=PredictionResult)
+async def predict_from_quali_time(input_data: ManualQualiInput):
+    """
+    Predict race position from a manual qualifying time input.
+    
+    - **driver**: Driver name/abbreviation (e.g., "VER", "HAM")
+    - **team**: Team name (e.g., "Red Bull Racing", "Mercedes")
+    - **quali_time**: Qualifying time in format "MM:SS.mmm" or "SS.mmm" (e.g., "1:23.456" or "83.456")
+    - **track_name**: Track/GP name (e.g., "Monaco Grand Prix", "Bahrain Grand Prix")
+    - **pole_time**: Optional pole position time for better position estimation
+    - **estimated_position**: Optional estimated qualifying position (1-20)
+    """
+    from predictor import predictor
+    
+    try:
+        # Parse times to seconds
+        quali_seconds = parse_time_to_seconds(input_data.quali_time)
+        pole_seconds = None
+        if input_data.pole_time:
+            pole_seconds = parse_time_to_seconds(input_data.pole_time)
+        
+        # Get prediction
+        prediction = predictor.predict_from_time(
+            driver=input_data.driver,
+            team=input_data.team,
+            quali_time_seconds=quali_seconds,
+            track_name=input_data.track_name,
+            pole_time_seconds=pole_seconds,
+            estimated_position=input_data.estimated_position
+        )
+        
+        return PredictionResult(
+            driver=prediction.driver,
+            team=prediction.team,
+            quali_position=prediction.quali_position,
+            predicted_position=prediction.predicted_position,
+            confidence=prediction.confidence,
+            expected_points=prediction.expected_points
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid time format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 
 if __name__ == "__main__":

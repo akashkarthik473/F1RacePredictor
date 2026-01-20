@@ -39,6 +39,30 @@ export type HealthCheck = {
   model_trained: boolean;
 };
 
+export type QualifyingResult = {
+  driver: string;
+  team: string;
+  quali_position: number;
+  q1_time: number | null;
+  q2_time: number | null;
+  q3_time: number | null;
+};
+
+export type QualifyingResponse = {
+  year: number;
+  race: string;
+  results: QualifyingResult[];
+};
+
+export type ManualQualiInput = {
+  driver: string;
+  team: string;
+  quali_time: string;
+  track_name: string;
+  pole_time?: string | null;
+  estimated_position?: number | null;
+};
+
 // === API Client ===
 
 class ApiClient {
@@ -99,6 +123,22 @@ class ApiClient {
     }>;
   }> {
     return this.request('/latest-quali');
+  }
+
+  // Get qualifying leaderboard for a specific race
+  async getQualifying(
+    year: number,
+    race: number | string
+  ): Promise<QualifyingResponse> {
+    return this.request<QualifyingResponse>(`/quali/${year}/${race}`);
+  }
+
+  // Predict from manual qualifying time
+  async predictFromTime(input: ManualQualiInput): Promise<PredictionResult> {
+    return this.request<PredictionResult>('/predict-from-time', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    } as RequestInit);
   }
 }
 
