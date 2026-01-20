@@ -1,4 +1,17 @@
+## Backend artifacts
 f1_cache
 f1_model.pkl
 venv
 __pycache__
+
+## Frontend artifacts
+node_modules
+dist
+*.log
+
+## Environment / editor files
+.env
+.env.*
+.vscode
+.DS_Store
+Thumbs.db

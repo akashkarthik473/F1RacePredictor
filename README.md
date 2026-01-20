@@ -1,145 +1,180 @@
-# FastF1 - FastAPI + React Fullstack App
+## F1 Race Predictor 🏎️  
 
-A modern fullstack application with a FastAPI backend and React + TypeScript frontend.
+**End‑to‑end F1 race prediction app** using live timing data from FastF1, a FastAPI backend, an ML model in Python, and a React + TypeScript frontend.
 
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
+The app lets you:
+- **Predict race results** from a selected weekend’s qualifying session
+- **Compare predictions vs actual race results** (when available)
+- **Enter custom qualifying times** and estimate where a driver is likely to finish
 
-## 📁 Project Structure
+---
 
-```
-fastF1/
+### 📁 Project Structure
+
+```text
+F1RacePredictor/
 ├── backend/
-│   ├── main.py           # FastAPI application
-│   └── requirements.txt  # Python dependencies
+│   ├── main.py          # FastAPI application & REST API
+│   ├── predictor.py     # ML model wrapper + prediction logic
+│   ├── f1_data.py       # Utilities to load FastF1 timing data
+│   ├── quali_models.py  # (Additional) qualifying / model helpers
+│   ├── requirements.txt # Python dependencies
+│   └── f1_cache/        # Local FastF1 HTTP/data cache (ignored in Git)
 ├── frontend/
 │   ├── src/
-│   │   ├── api/
-│   │   │   └── client.ts # API client for backend communication
-│   │   ├── App.tsx       # Main React component
-│   │   ├── App.css       # Styles
-│   │   └── main.tsx      # Entry point
+│   │   ├── api/client.ts # Typed API client for the backend
+│   │   ├── App.tsx       # Main React UI
+│   │   ├── App.css       # F1‑style dark UI
+│   │   └── main.tsx      # React entrypoint
 │   ├── package.json
 │   └── vite.config.ts
 └── README.md
 ```
 
-## 🚀 Getting Started
+---
 
-### Prerequisites
+### 🧠 How the Model Works (High Level)
 
-- **Python 3.10+** - For the backend
-- **Node.js 18+** - For the frontend
+The backend model (`predictor.py`) uses **qualifying performance and historical race data** to predict race results:
 
-### Backend Setup
+- **Features**  
+  - Qualifying position  
+  - Team (label‑encoded)  
+  - Track name and overtaking difficulty  
+  - Q3 lap time gaps (when available)  
+  - Historical team strength (average points per race)  
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+- **Model**  
+  - `GradientBoostingRegressor` from scikit‑learn  
+  - Trained on historical seasons loaded via FastF1 and cached locally  
+  - Falls back to a **heuristic model** if the ML model is not yet trained
 
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # macOS/Linux
-   source venv/bin/activate
-   ```
+The API exposes predictions as structured JSON that the React frontend visualizes in cards with confidence bars, team colors, and (when available) actual race results for comparison.
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-4. Start the server:
-   ```bash
-   python main.py
-   ```
-   
-   Or use uvicorn directly:
-   ```bash
-   uvicorn main:app --reload --port 8000
-   ```
+### 🚀 Getting Started
 
-The API will be available at `http://localhost:8000`
+#### Prerequisites
 
-📖 **API Documentation**: Visit `http://localhost:8000/docs` for interactive Swagger docs
+- **Python 3.10+** – backend / model
+- **Node.js 18+** – frontend
 
-### Frontend Setup
+---
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
+### 🐍 Backend Setup (FastAPI + FastF1)
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+1. **Navigate to the backend directory**
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-The app will be available at `http://localhost:5173`
-
-## 🔌 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Welcome message |
-| GET | `/api/health` | Health check |
-| GET | `/api/items` | Get all items |
-| GET | `/api/items/{id}` | Get item by ID |
-| POST | `/api/items` | Create new item |
-| PUT | `/api/items/{id}` | Update item |
-| DELETE | `/api/items/{id}` | Delete item |
-
-## 🛠️ Development
-
-### Running Both Services
-
-You'll need two terminal windows:
-
-**Terminal 1 - Backend:**
 ```bash
 cd backend
-python main.py
 ```
 
-**Terminal 2 - Frontend:**
+2. **Create and activate a virtual environment** (recommended)
+
 ```bash
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# macOS/Linux
+source venv/bin/activate
+```
+
+3. **Install dependencies**
+
+```bash
+pip install -r requirements.txt
+```
+
+4. **Run the API**
+
+```bash
+python main.py
+# or:
+uvicorn main:app --reload --port 8000
+```
+
+Backend will be available at `http://localhost:8000`
+
+- **Interactive docs (Swagger/OpenAPI)**: `http://localhost:8000/docs`
+
+---
+
+### ⚛️ Frontend Setup (React + Vite + TypeScript)
+
+1. **Navigate to the frontend directory**
+
+```bash
+cd frontend
+```
+
+2. **Install dependencies**
+
+```bash
+npm install
+```
+
+3. **Start the dev server**
+
+```bash
+npm run dev
+```
+
+Frontend will be available at `http://localhost:5173`
+
+> The frontend uses `http://localhost:8000/api` as its API base URL (see `src/api/client.ts`), so make sure the backend is running.
+
+---
+
+### 🔌 Key API Endpoints
+
+All endpoints are rooted at `/api` (see `backend/main.py`):
+
+| Method | Endpoint                          | Description |
+|--------|-----------------------------------|-------------|
+| GET    | `/api/health`                     | Basic health check & model status |
+| GET    | `/api/schedule?year=2024`         | F1 race schedule for a season |
+| GET    | `/api/predict/{year}/{race}`      | Predict race results from qualifying data |
+| POST   | `/api/train?years=2023,2024`      | Train the ML model on historical seasons |
+| GET    | `/api/latest-quali`               | Most recent qualifying session leaderboard |
+| GET    | `/api/quali/{year}/{race}`        | Qualifying times + positions for a race |
+| GET    | `/api/model-status`               | Check whether the model is trained |
+| POST   | `/api/predict-from-time`          | Predict from a manually entered qualifying time |
+
+Use the interactive docs at `/docs` to explore endpoints and payloads.
+
+---
+
+### 🛠️ Running Backend & Frontend Together
+
+In two terminals:
+
+```bash
+# Terminal 1 – backend
+cd backend
+python main.py
+
+# Terminal 2 – frontend
 cd frontend
 npm run dev
 ```
 
-### Building for Production
+Then open `http://localhost:5173` in your browser.
 
-**Frontend:**
-```bash
-cd frontend
-npm run build
-```
+---
 
-The build output will be in `frontend/dist/`
+### ✨ Features / What to Highlight on a Resume
 
-## ✨ Features
+- **End‑to‑end system** – FastF1 data ingestion, ML model training, REST API, and a modern React UI  
+- **ML‑driven predictions** – Gradient boosting model over qualifying + historical performance features  
+- **Interactive UI** – Race selector, manual time input, qualifying leaderboard, and prediction cards with team colors and confidence bars  
+- **Real‑world domain** – Uses real F1 data and handles tracks, seasons, and race weekends  
+- **FastF1 caching** – Local cache (`backend/f1_cache/`) to avoid repeatedly hitting remote data sources  
 
-- ⚡ **FastAPI** - High-performance Python backend
-- ⚛️ **React 18** - Modern React with hooks
-- 📘 **TypeScript** - Type-safe frontend code
-- 🎨 **Custom UI** - Beautiful dark theme with animations
-- 🔄 **Hot Reload** - Both backend and frontend support hot reloading
-- 📝 **Auto Docs** - Swagger UI at `/docs`
-- 🔗 **CORS Configured** - Ready for frontend-backend communication
+---
 
-## 📝 License
+### 📝 License
 
 MIT
-
